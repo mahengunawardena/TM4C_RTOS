@@ -1,3 +1,39 @@
+// Name        : Basic Micro Controller Operating System main.c
+// Author      : Mahendra Gunawardena
+// Version     : Rev 0.01
+// Copyright   : Your copyright notice
+// Description : Demonstration of Basic Operating System Design Using both Assembly and C
+//             : on TM4C123 ARM Cortex M4 Micro Controller
+//============================================================================
+/*
+ * Basic Micro Controller Operating System main.c
+ * Implementation of Basic Operating System Design Using both Assembly and C
+*  on TM4C123 ARM Cortex M4 Micro Controller. The project access SW1 and SW2 and
+ * to active the tricolor LED. Task1 monitors SW1 and TASK2 monitors SW2. Count1 and Count2
+ * global variable are used to notify TASK3 responsible for activating the Tricolor LED
+ *
+ * Copyright Mahendra Gunawardena, Mitisa LLC
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL I
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+
 #include <stdint.h>
 #include "os.h"
 #include "BSP_Custom.h"
@@ -5,12 +41,9 @@
 
 #define THREADFREQ 1000   // frequency in Hz of round robin scheduler
 
-uint32_t Count1;   // number of times thread1 loops
-uint32_t Count2;   // number of times thread2 loops
-// P2OUT at 0x40004C03
-//#define LED_RED   (*((volatile uint8_t *)(0x42000000+32*0x4C03+4*0)))  /* Port 2.0 Output */
-//#define LED_GREEN (*((volatile uint8_t *)(0x42000000+32*0x4C03+4*1)))  /* Port 2.1 Output */
-//#define LED_BLUE  (*((volatile uint8_t *)(0x42000000+32*0x4C03+4*2)))  /* Port 2.2 Output */
+uint32_t Count1;   // SW1 on time, track via incrementing Count1, and decremented when LED is active
+uint32_t Count2;   // SW1 on time, track via incrementing Count2, and decremented when LED is active
+
 
 // LaunchPad built-in hardware
 // SW1 left switch is negative logic PF4 on the Launchpad
@@ -19,22 +52,8 @@ uint32_t Count2;   // number of times thread2 loops
 // blue LED connected to PF2 on the Launchpad
 // green LED connected to PF3 on the Launchpad
 
-// 1. Pre-processor Directives Section
-// Constant declarations to access port registers using
-// symbolic names instead of addresses
 
-//#define GPIO_PORTF_DATA_R       (*((volatile unsigned long *)0x400253FC))
-//#define GPIO_PORTF_DIR_R        (*((volatile unsigned long *)0x40025400))
-//#define GPIO_PORTF_AFSEL_R      (*((volatile unsigned long *)0x40025420))
-//#define GPIO_PORTF_PUR_R        (*((volatile unsigned long *)0x40025510))
-//#define GPIO_PORTF_DEN_R        (*((volatile unsigned long *)0x4002551C))
-//#define GPIO_PORTF_LOCK_R       (*((volatile unsigned long *)0x40025520))
-//#define GPIO_PORTF_CR_R         (*((volatile unsigned long *)0x40025524))
-//#define GPIO_PORTF_AMSEL_R      (*((volatile unsigned long *)0x40025528))
-//#define GPIO_PORTF_PCTL_R       (*((volatile unsigned long *)0x4002552C))
-//#define SYSCTL_RCGC2_R          (*((volatile unsigned long *)0x400FE108))
-
-
+//   Global Variables
 //https://users.ece.utexas.edu/~valvano/Volume1/E-Book/C6_MicrocontrollerPorts.htm
 #define switch_1                (*((volatile unsigned long *)0x40025040))
 #define switch_2                (*((volatile unsigned long *)0x40025004))
@@ -42,10 +61,6 @@ uint32_t Count2;   // number of times thread2 loops
 #define led_blue                (*((volatile unsigned long *)0x40025010))
 #define led_green               (*((volatile unsigned long *)0x40025020))
 
-// 2. Declarations Section
-//   Global Variables
-unsigned long SW1,SW2;  // input from PF4,PF0
-unsigned long Out;      // outputs to PF3,PF2,PF1 (multicolor LED)
 
 //   Function Prototypes
 void PortF_Init(void);
@@ -72,6 +87,10 @@ void Task2(void){
 }
 void Task3(void){
   for(;;){
+      // if both SW1 and SW2 is active then both Count1 and Count2 will be positive. The GREEN LED is on
+      // if SW1 is only active then Count1 will be increment and positive. The RED LED is on
+      // if SW2 is only active then Count2 will be increment and positive. The BLUE LED is on
+      // if both Count1 and Count2 are equal to zero then the tricolor LED is OFF
       if ((Count1>0)&&(Count2>0)){
           led_red = 0x00;
           led_blue = 0x00;
@@ -96,7 +115,7 @@ void Task3(void){
   }
 }
 int main(void){
-  OS_Init();           // initialize, disable interrupts, 48 MHz
+  OS_Init();           // initialize and disable interrupts
   // initialize P2.2-P2.0 and make them outputs (P2.2-P2.0 built-in RGB LEDs)
   PortF_Init();
   OS_AddThreads(&Task1, &Task2, &Task3);
