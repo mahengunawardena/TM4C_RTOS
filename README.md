@@ -5,3 +5,10 @@ The purpose of this project is to demonstrate the configuation of Code Composer 
 Development.
 
 # Technical Details
+
+Integrated Development Enviorment: Code Composor Studio 12.00
+Compiler
+Hardware
+Host System: Ubuntu 20.04 LTS
+
+
